@@ -1,0 +1,79 @@
+Part 3 hardware check — 2026-10-26
+Sample key: 2B7E151628AED2A6ABF7158809CF4F3C (starter sample, not the Lab 1 credential)
+SWD reads/programming: OpenOCD 0.12.0; console: 115200 baud.
+A: ST-LINK 0010000D4142500220353451, /dev/ttyACM1
+B: ST-LINK 002C001B4142500220353451, /dev/ttyACM0
+
+3.1: plaintext provisioning
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+--- Lab 2 Part 3: plaintext storage ---
+NVS empty. Enter AppKey (32 hex digits, then Enter; no echo):
+[PASS] Plaintext AppKey stored in NVS.
+AppKey: 2B7E151628AED2A6ABF7158809CF4F3C
+
+3.2: encrypted provisioning
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+--- Lab 2 Part 3: UID-derived encrypted storage ---
+STM32 Silicon UID: 2F0046001250323243373120
+NVS empty. Enter AppKey (32 hex digits, then Enter; no echo):
+[PASS] Stored AppKey decrypted and verified.
+AppKey: 2B7E151628AED2A6ABF7158809CF4F3C
+
+A: reboot with existing NVS
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+--- Lab 2 Part 3: UID-derived encrypted storage ---
+STM32 Silicon UID: 2F0046001250323243373120
+[PASS] Stored AppKey decrypted and verified.
+AppKey: 2B7E151628AED2A6ABF7158809CF4F3C
+
+3.3: B after programming A's entire flash image
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+--- Lab 2 Part 3: UID-derived encrypted storage ---
+STM32 Silicon UID: 18000F001250323243373120
+[FAIL] Decrypted key check failed: wrong board UID or damaged record.
+[FAIL] Part 3 stopped: -149. NVS was not replaced.
+
+B: rejection persists after reboot
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+--- Lab 2 Part 3: UID-derived encrypted storage ---
+STM32 Silicon UID: 18000F001250323243373120
+[FAIL] Decrypted key check failed: wrong board UID or damaged record.
+[FAIL] Part 3 stopped: -149. NVS was not replaced.
+
+Flash verification
+A dump: 0x08000000–0x0803FFFF, 262144 bytes.
+B readback after boot: identical to A byte-for-byte.
+SHA-256 (both): ada28acd7c2879f169cdfcfae09a412ef33636744ae68007c686690dec284f9e
+Plaintext sample-key matches in encrypted full flash: 0.
+
+plaintext NVS, first 128 bytes (same bytes shown in screenshot):
+0803f000  2b 7e 15 16 28 ae d2 a6 ab f7 15 88 09 cf 4f 3c
+0803f010  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f020  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f030  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f040  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f050  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f060  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f070  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+NVS SHA-256: 71047825bf970a684532266e82fabc54e20dce8c2278c4ad904975989e614d26
+
+encrypted NVS, first 128 bytes (same bytes shown in screenshot):
+0803f000  49 4f 8e a8 67 1b 0f 78 d9 cc a6 08 ad e7 64 ac
+0803f010  4e 8f d7 cf eb e9 39 63 19 9d 22 f6 74 82 76 7a
+0803f020  d4 ff b8 b7 7f 7d 6b 26 19 6e 9a 07 0e 98 3f 67
+0803f030  01 a4 c4 2d ec 81 3d 4d e1 a5 35 d2 0a 7d f5 36
+0803f040  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f050  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f060  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+0803f070  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+NVS SHA-256: 244ef845cd9b7d55ac4bf9649e93c5ab8c9146446142a3ee9afb3d83c7a7a272

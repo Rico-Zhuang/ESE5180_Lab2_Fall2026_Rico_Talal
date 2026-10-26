@@ -11,35 +11,21 @@ ESE5180: IoT Wireless, Security, & Scaling
 
 **GitHub Repository URL:** https://github.com/Rico-Zhuang/ESE5180_Lab2_Fall2026_Rico_Talal
 
-**Lab dependencies:** https://github.com/ese5180/ESE5180-Lab-Dependencies
-
 ## Part 1 — Implementing Our Own LoRa Security
 
-The implementation is included directly in this group repository under [`lab2_security/`](lab2_security/):
+The [client](lab2_security/LoRa_Encrypted_Client_Zephyr/) and [server](lab2_security/LoRa_Encrypted_Server_Zephyr/) share the [protocol code](lab2_security/LoRa_Security_Common/). See [build and checkoff instructions](lab2_security/README.md).
 
-- [Client firmware](lab2_security/LoRa_Encrypted_Client_Zephyr/)
-- [Server firmware](lab2_security/LoRa_Encrypted_Server_Zephyr/)
-- [Shared protocol and radio loop](lab2_security/LoRa_Security_Common/)
-- [Build instructions, packet definitions, verification results, and checkoff procedure](lab2_security/README.md)
-- [Protocol tests](lab2_security/tests/) and [build/provisioning tools](lab2_security/tools/)
-
-The client and server authenticate each other, exchange ephemeral Curve25519 keys, confirm an AES-128 session key, and transfer signed, encrypted readings. Each reading is transmitted twice; the server prints it once and ignores the duplicate. The firmware also retries handshake packets and restarts after one minute without an authenticated response.
-
-Both boards have been flashed and verified. Hardware checks covered pairing, encrypted data delivery, duplicate rejection, signed receipts, and timeout recovery. All ten host protocol test groups pass. The teaching-team demonstration and individual explanations are still required. The optional TCP-like extra credit is not implemented.
-
-The Crypto dependency is included with its original licenses. Generated `build*` folders and private `src/identity.h` files are excluded from Git. The local `ese5180deps/` checkout is only the starter reference; the submitted implementations are the regular files in `lab2_security/`.
+Both firmwares passed hardware checks for pairing, encrypted delivery, duplicate rejection, receipts, and timeout recovery; all ten host test groups passed. The teaching-team checkoff is still required. Builds and private signing keys are excluded from Git.
 
 ### Answer 1.1
 
-We chose Curve25519 Diffie–Hellman because the boards can derive a fresh shared key without transmitting a secret or asking someone to enter a new passphrase for each connection. The starter already provides the DH operations. We use Ed25519 signatures and provisioned peer public keys to authenticate the exchange, then derive the AES key with HKDF-SHA256 and confirm it with signed, encrypted challenge values. This adds identity provisioning and a larger handshake, but avoids trusting a public key just because it arrived in an advertisement.
+We chose Curve25519 Diffie–Hellman because the starter supports it and it creates fresh shared keys without transmitting a secret. Ed25519 signatures authenticate peers, and HKDF-SHA256 derives the AES key; this requires provisioning identities and a larger handshake.
 
-The remaining weaknesses include radio jamming, packet loss, traffic analysis, denial of service through repeated traffic, and physical extraction of a board's signing key. LoRa's long range increases the area from which someone could listen or interfere. For an occasional, noncritical sensor reading, an isolated lost packet may be acceptable and fresh DH exchanges are infrequent. That reduces the operational impact; it does not remove the vulnerabilities or make LoRa inherently secure.
-
-For confidentiality, AES encrypts application data using a key derived locally from the authenticated DH exchange. For integrity and identity, signatures cover the entire header and ciphertext, confirmation binds the handshake transcript, and session IDs plus sequence tracking reject replayed delivery. For availability under ordinary packet loss, ACK retries, two data transmissions, and one-minute recovery prevent the protocol from waiting forever on a lost message. These mechanisms support the CIA goals within the lab's packet-loss threat model. They cannot guarantee availability against an active jammer or guarantee delivery when both copies are lost.
+AES provides confidentiality, while signatures and replay checks protect integrity. Retries and timeout recovery support availability during packet loss. Jamming, traffic analysis, and physical key extraction remain risks, and LoRa's range lets attackers operate farther away. Occasional lost readings may be acceptable for a noncritical sensor, but availability against jamming is not guaranteed.
 
 ## Part 2 — Encryption Speed and Memory Tradeoffs
 
-The [AES benchmark](lab2_security/AES_Benchmark_Zephyr/) measures the four required variants. All four were built and run on the same NUCLEO-WL55JC board at 48 MHz on October 26, 2026, using 200 iterations and a 176-byte message. Each passed the FIPS-197 known-answer test and the full-message round-trip check. The [run instructions](lab2_security/AES_Benchmark_Zephyr/README.md) and [saved serial, size, and symbol output](lab2_security/AES_Benchmark_Zephyr/results/) accompany the results below.
+All four [benchmark variants](lab2_security/AES_Benchmark_Zephyr/) ran on the same NUCLEO-WL55JC at 48 MHz, using 200 iterations and a 176-byte message. Each passed the known-answer and round-trip checks. [Saved measurements](lab2_security/AES_Benchmark_Zephyr/results/) were collected on October 26, 2026.
 
 ### Answer 2.1 — Speed
 
@@ -50,7 +36,7 @@ The [AES benchmark](lab2_security/AES_Benchmark_Zephyr/) measures the four requi
 | SW, ROM + fewer | 8,902 | 8,882 | 107 | 107 | 395.003 |
 | HW | 1,098 | 1,036 | 62 | 81 | 228.128 |
 
-Each row comes from one run of 200 iterations. Cycle columns use the integer averages printed by the benchmark; the microsecond column is converted from the full accumulated cycle count before averaging, so it retains more precision.
+Cycle averages are rounded to integers; microseconds use the full accumulated cycle count.
 
 ### Answer 2.2 — Memory
 
@@ -61,7 +47,7 @@ Each row comes from one run of 200 iterations. Cycle columns use the integer ave
 | SW, ROM + fewer | 32,808 | 220 | 10,280 | 33,028 | 10,500 |
 | HW | 26,464 | 492 | 9,304 | 26,956 | 9,796 |
 
-All values are bytes from `arm-zephyr-eabi-size`. Flash is `text + data` and RAM is `data + bss`, as specified in the handout.
+Values are bytes from `arm-zephyr-eabi-size`.
 
 ### Answer 2.3 — Locating the tables
 
@@ -74,4 +60,26 @@ All values are bytes from `arm-zephyr-eabi-size`. Flash is `text + data` and RAM
 
 ### Answer 2.4 — Choosing a variant
 
-We would use the STM32 hardware AES variant. It used 9,796 bytes of RAM, compared with 19,248 bytes for RAM tables and 10,500 bytes for either ROM variant, which makes it the best fit for limited free RAM. It also encrypted the 176-byte message in 228.128 µs, compared with 301.628 µs for RAM tables and 395.003 µs for ROM with fewer tables. Since the sensor encrypts only once every ten minutes, the small timing differences matter less than keeping RAM available, so the lowest measured RAM use is our main reason for choosing hardware AES.
+We would choose hardware AES: it used 9,796 bytes of RAM versus 19,248 for RAM tables. It also encrypted 176 bytes in 228.128 µs versus 301.628 µs. With encryption only once every ten minutes, saving scarce RAM matters more than the timing difference.
+
+## Part 3 — Hardware Unique Keys
+
+The [implementation and reproduction steps](lab2_security/Hardware_Unique_Keys/) use the starter sample key, as requested, instead of the unavailable Lab 1 key.
+
+### Answer 3.1 — Plaintext storage
+
+The 16-byte sample key is visible at `0x0803F000` in Board A's NVS dump.
+
+![Plaintext key in NVS, 8-bit hex view](lab2_security/Hardware_Unique_Keys/results/plaintext.png)
+
+### Answer 3.2 — Encrypted storage
+
+HKDF-SHA256 derives an AES-128 key from the board UID and application salt. NVS stores the IV, CBC ciphertext, and a digest for checking decryption. Serial provisioning keeps the plaintext key out of the firmware; it was absent from the entire 256 KiB flash dump.
+
+![Encrypted key in NVS, 8-bit hex view](lab2_security/Hardware_Unique_Keys/results/encrypted.png)
+
+### Answer 3.3 — Cloning
+
+Board A decrypted successfully. Board B rejected the identical 256 KiB flash image because its UID differs; both results persisted after reset. [Serial output and flash comparison](lab2_security/Hardware_Unique_Keys/results/clone-check.txt) record the test. Both boards remain ready for the teaching-team demonstration.
+
+This demonstrates rejection of an exact clone. The UID is readable, so it is not a secret HUK; the CBC format also does not authenticate arbitrary record changes.

@@ -123,11 +123,9 @@ Receipts identify exactly which signed ciphertext reached the server and provide
 
 ## Answer 1.1
 
-We chose Curve25519 Diffie–Hellman because the boards can derive a fresh shared key without transmitting a secret or asking someone to enter a new passphrase for each connection. The starter already provides the DH operations. We use Ed25519 signatures and provisioned peer public keys to authenticate the exchange, then derive the AES key with HKDF-SHA256 and confirm it with signed, encrypted challenge values. This adds identity provisioning and a larger handshake, but avoids trusting a public key just because it arrived in an advertisement.
+We chose Curve25519 Diffie–Hellman because the starter supports it and it creates fresh shared keys without transmitting a secret. Ed25519 signatures authenticate peers, and HKDF-SHA256 derives the AES key; this requires provisioning identities and a larger handshake.
 
-The remaining weaknesses include radio jamming, packet loss, traffic analysis, denial of service through repeated traffic, and physical extraction of a board's signing key. LoRa's long range increases the area from which someone could listen or interfere. For an occasional, noncritical sensor reading, an isolated lost packet may be acceptable and fresh DH exchanges are infrequent. That reduces the operational impact; it does not remove the vulnerabilities or make LoRa inherently secure.
-
-For confidentiality, AES encrypts application data using a key derived locally from the authenticated DH exchange. For integrity and identity, signatures cover the entire header and ciphertext, confirmation binds the handshake transcript, and session IDs plus sequence tracking reject replayed delivery. For availability under ordinary packet loss, ACK retries, two data transmissions, and one-minute recovery prevent the protocol from waiting forever on a lost message. These mechanisms support the CIA goals within the lab's packet-loss threat model. They cannot guarantee availability against an active jammer or guarantee delivery when both copies are lost.
+AES provides confidentiality, while signatures and replay checks protect integrity. Retries and timeout recovery support availability during packet loss. Jamming, traffic analysis, and physical key extraction remain risks, and LoRa's range lets attackers operate farther away. Occasional lost readings may be acceptable for a noncritical sensor, but availability against jamming is not guaranteed.
 
 ## Verification and checkoff
 
