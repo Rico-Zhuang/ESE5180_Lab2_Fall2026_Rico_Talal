@@ -13,4 +13,3 @@ ESE5180: IoT Wireless, Security, & Scaling
 
 **Lab dependencies:** https://github.com/ese5180/ESE5180-Lab-Dependencies
 
-
