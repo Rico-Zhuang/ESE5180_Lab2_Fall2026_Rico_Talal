@@ -39,8 +39,7 @@ static const uint8_t kat_ct[16] = {
 	0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30,
 	0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5, 0x5a};
 
-static uint8_t msg[MSG_LEN], pt[MSG_LEN];
-static uint8_t ct[MSG_LEN] __maybe_unused; /* used once you write the timing code */
+static uint8_t msg[MSG_LEN], pt[MSG_LEN], ct[MSG_LEN];
 
 static inline uint64_t cycles_between(timing_t *a, timing_t *b)
 {
@@ -80,6 +79,7 @@ int main(void)
 	timing_t t0, t1;
 	uint64_t cold_setup, setup_sum = 0, enc_sum = 0, dec_sum = 0;
 	uint8_t key[16];
+	int ret;
 
 	for (int i = 0; i < MSG_LEN; i++) {
 		msg[i] = (uint8_t)(i * 7 + 3);
@@ -95,13 +95,17 @@ int main(void)
 
 	if (aes->init()) {
 		printk("init FAILED\n");
+		timing_stop();
 		return 0;
 	}
 
 	/* 1. Cold key setup: the very first call (may build tables, wake HW, ...) */
 	t0 = timing_counter_get();
-	aes->enc_setup(key);
+	ret = aes->enc_setup(key);
 	t1 = timing_counter_get();
+	if (ret) {
+		goto failed;
+	}
 	aes->enc_teardown();
 	cold_setup = cycles_between(&t0, &t1);
 
@@ -111,66 +115,69 @@ int main(void)
 	printk("FIPS-197 known-answer test: %s\n", kat ? "FAIL" : "PASS");
 	if (kat) {
 		printk("  (error %d), not timing a broken implementation\n", kat);
+		timing_stop();
 		return 0;
 	}
 
-	/*
-	 * ======================= YOUR TASK =======================
-	 * Measure three things for this AES variant and store the TOTAL
-	 * cycles over ITERATIONS runs (printing divides by ITERATIONS):
-	 *   setup_sum  time to get ready with a key
-	 *   enc_sum    time to encrypt msg (176 B)
-	 *   dec_sum    time to decrypt it back
-	 *
-	 * Timing functions (Zephyr <zephyr/timing/timing.h>):
-	 *   timing_t timing_counter_get(void);           read the cycle counter now
-	 *   uint64_t cycles_between(timing_t *t0, timing_t *t1);  cycles from t0 to t1
-	 *
-	 * AES functions (aes_backend.h), all return 0 on success:
-	 *   int  aes->enc_setup(const uint8_t key[16]);  get ready to encrypt
-	 *   int  aes->encrypt(uint8_t *out, const uint8_t *in, size_t len);
-	 *   void aes->enc_teardown(void);                done encrypting
-	 *   int  aes->dec_setup(const uint8_t key[16]);  get ready to decrypt
-	 *   int  aes->decrypt(uint8_t *out, const uint8_t *in, size_t len);
-	 *   void aes->dec_teardown(void);                done decrypting
-	 * Every setup must be followed by its teardown before the next setup.
-	 *
-	 * Only the work being measured goes between t0 and t1.
-	 * =========================================================
-	 */
-
-	/* 1) Key setup time -> setup_sum
-	 *    What: time aes->enc_setup(key) on its own, ITERATIONS times.
-	 *    How:  loop ITERATIONS times { t0 = counter; enc_setup(key);
-	 *          t1 = counter; enc_teardown(); setup_sum += cycles(t0, t1); }
-	 *          (teardown comes after t1, so it is not counted)
-	 */
-
-	/* 2) Encryption time -> enc_sum
-	 *    What: time ITERATIONS calls of aes->encrypt(ct, msg, MSG_LEN)
-	 *          with the key already set up.
-	 *    How:  enc_setup(key); t0 = counter;
-	 *          loop ITERATIONS times { encrypt(ct, msg, MSG_LEN); }
-	 *          t1 = counter; enc_teardown(); enc_sum = cycles(t0, t1);
-	 */
-
-	/* 3) Decryption time -> dec_sum
-	 *    What: same as 2), but decrypt ct back into pt.
-	 *    How:  dec_setup(key); t0 = counter;
-	 *          loop ITERATIONS times { decrypt(pt, ct, MSG_LEN); }
-	 *          t1 = counter; dec_teardown(); dec_sum = cycles(t0, t1);
-	 *    The code below checks that pt matches msg.
-	 */
-
-	if (setup_sum == 0 || enc_sum == 0 || dec_sum == 0) {
-		printk("Timing not written yet: complete YOUR TASK in main.c\n");
-		return 0;
+	/* Time only each AES call. Teardown, checks, and accumulation stay
+	 * outside its measurement window. */
+	for (int i = 0; i < ITERATIONS; i++) {
+		t0 = timing_counter_get();
+		ret = aes->enc_setup(key);
+		t1 = timing_counter_get();
+		if (ret) {
+			goto failed;
+		}
+		aes->enc_teardown();
+		setup_sum += cycles_between(&t0, &t1);
 	}
+
+	/* Set up the key once, then encrypt a full message per iteration. */
+	ret = aes->enc_setup(key);
+	if (ret) {
+		goto failed;
+	}
+	for (int i = 0; i < ITERATIONS; i++) {
+		t0 = timing_counter_get();
+		ret = aes->encrypt(ct, msg, MSG_LEN);
+		t1 = timing_counter_get();
+		if (ret) {
+			aes->enc_teardown();
+			goto failed;
+		}
+		enc_sum += cycles_between(&t0, &t1);
+	}
+	aes->enc_teardown();
+
+	/* Decrypt the resulting ciphertext with setup outside the timer. */
+	ret = aes->dec_setup(key);
+	if (ret) {
+		goto failed;
+	}
+	for (int i = 0; i < ITERATIONS; i++) {
+		t0 = timing_counter_get();
+		ret = aes->decrypt(pt, ct, MSG_LEN);
+		t1 = timing_counter_get();
+		if (ret) {
+			aes->dec_teardown();
+			goto failed;
+		}
+		dec_sum += cycles_between(&t0, &t1);
+	}
+	aes->dec_teardown();
 
 	timing_stop();
 
+	if (setup_sum == 0 || enc_sum == 0 || dec_sum == 0) {
+		printk("Timing measurement FAILED: zero cycle count\n");
+		return 0;
+	}
+
 	printk("Round trip of %d B payload: %s\n", MSG_LEN,
 	       memcmp(pt, msg, MSG_LEN) ? "MISMATCH" : "OK");
+	if (memcmp(pt, msg, MSG_LEN)) {
+		return 0;
+	}
 
 	printk("Results (average per call):\n");
 	print_time("key setup, first call", cold_setup, 1);
@@ -181,10 +188,17 @@ int main(void)
 	print_time("decrypt per byte", dec_sum, ITERATIONS * MSG_LEN);
 
 	/* One line to paste into a spreadsheet */
-	printk("CSV,%s,%llu,%llu,%llu,%llu\n", aes->name, cold_setup,
-	       setup_sum / ITERATIONS, enc_sum / (ITERATIONS * MSG_LEN),
-	       dec_sum / (ITERATIONS * MSG_LEN));
-	printk("    (variant, cold setup cyc, setup cyc, enc cyc/B, dec cyc/B)\n");
+	uint64_t enc_ns = timing_cycles_to_ns(enc_sum) / ITERATIONS;
 
+	printk("CSV,\"%s\",%llu,%llu,%llu,%llu,%llu.%03llu\n", aes->name, cold_setup,
+	       setup_sum / ITERATIONS, enc_sum / (ITERATIONS * MSG_LEN),
+	       dec_sum / (ITERATIONS * MSG_LEN), enc_ns / 1000U, enc_ns % 1000U);
+	printk("    (variant, cold setup cyc, setup cyc, enc cyc/B, dec cyc/B, enc 176 B us)\n");
+
+	return 0;
+
+failed:
+	timing_stop();
+	printk("AES operation FAILED (%d); no timing results\n", ret);
 	return 0;
 }

@@ -1,0 +1,31 @@
+Variant: sw_ram
+Board: NUCLEO-WL55JC (ST-LINK 0010000D4142500220353451)
+Captured UTC: 2026-10-26T22:25:20.047337+00:00
+
+Serial output (from benchmark boot):
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+=== AES-128 benchmark: SW (PSA), RAM tables ===
+CPU timer: 48 MHz, message: 176 B, iterations: 200
+FIPS-197 known-answer test: PASS
+Round trip of 176 B payload: OK
+Results (average per call):
+  key setup, first call           46319 cyc    964979.16 ns
+  key setup                        8815 cyc    183657.81 ns
+  encrypt 176 B payload           14478 cyc    301628.95 ns
+  decrypt 176 B payload           14449 cyc    301033.64 ns
+  encrypt per byte                   82 cyc      1713.80 ns
+  decrypt per byte                   82 cyc      1710.41 ns
+CSV,"SW (PSA), RAM tables",46319,8815,82,82,301.628
+    (variant, cold setup cyc, setup cyc, enc cyc/B, dec cyc/B, enc 176 B us)
+
+arm-zephyr-eabi-size build_sw_ram/zephyr/zephyr.elf
+   text	   data	    bss	    dec	    hex	filename
+  30704	    220	  19028	  49952	   c320	build_sw_ram/zephyr/zephyr.elf
+
+arm-zephyr-eabi-nm -S build_sw_ram/zephyr/zephyr.elf (FT0, FT1, RT0, FSb):
+20002c24 00000100 b FSb
+20002510 00000400 b FT0
+20002110 00000400 b FT1
+20001510 00000400 b RT0

@@ -1,5 +1,6 @@
 /* AES-128 on the STM32WL55 hardware AES peripheral, through Zephyr's
  * crypto driver API (driver: crypto_stm32, devicetree node "aes"). */
+#include <string.h>
 #include <zephyr/kernel.h>
 
 #if defined(CONFIG_CRYPTO_STM32)

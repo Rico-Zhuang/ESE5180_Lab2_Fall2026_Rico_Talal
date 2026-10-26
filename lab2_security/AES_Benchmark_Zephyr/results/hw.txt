@@ -1,0 +1,28 @@
+Variant: hw
+Board: NUCLEO-WL55JC (ST-LINK 0010000D4142500220353451)
+Captured UTC: 2026-10-26T22:25:31.170004+00:00
+
+Serial output:
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+=== AES-128 benchmark: HW (STM32 AES peripheral) ===
+CPU timer: 48 MHz, message: 176 B, iterations: 200
+FIPS-197 known-answer test: PASS
+Round trip of 176 B payload: OK
+Results (average per call):
+  key setup, first call            1098 cyc     22875.00 ns
+  key setup                        1036 cyc     21590.93 ns
+  encrypt 176 B payload           10950 cyc    228128.02 ns
+  decrypt 176 B payload           14345 cyc    298868.22 ns
+  encrypt per byte                   62 cyc      1296.18 ns
+  decrypt per byte                   81 cyc      1698.11 ns
+CSV,"HW (STM32 AES peripheral)",1098,1036,62,81,228.128
+    (variant, cold setup cyc, setup cyc, enc cyc/B, dec cyc/B, enc 176 B us)
+
+arm-zephyr-eabi-size build_hw/zephyr/zephyr.elf
+   text	   data	    bss	    dec	    hex	filename
+  26464	    492	   9304	  36260	   8da4	build_hw/zephyr/zephyr.elf
+
+arm-zephyr-eabi-nm -S build_hw/zephyr/zephyr.elf (FT0, FT1, RT0, FSb):
+missing: FT0, FT1, RT0, FSb

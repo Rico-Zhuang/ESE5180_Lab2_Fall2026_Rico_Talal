@@ -1,0 +1,30 @@
+Variant: sw_rom_fewer
+Board: NUCLEO-WL55JC (ST-LINK 0010000D4142500220353451)
+Captured UTC: 2026-10-26T22:25:27.859218+00:00
+
+Serial output:
+*** Booting nRF Connect SDK v3.4.0-99553055607b ***
+*** Using Zephyr OS v4.4.0-bf801e4e3d19 ***
+
+=== AES-128 benchmark: SW (PSA), ROM + fewer tables ===
+CPU timer: 48 MHz, message: 176 B, iterations: 200
+FIPS-197 known-answer test: PASS
+Round trip of 176 B payload: OK
+Results (average per call):
+  key setup, first call            8902 cyc    185458.33 ns
+  key setup                        8882 cyc    185046.45 ns
+  encrypt 176 B payload           18960 cyc    395003.95 ns
+  decrypt 176 B payload           18835 cyc    392398.33 ns
+  encrypt per byte                  107 cyc      2244.34 ns
+  decrypt per byte                  107 cyc      2229.53 ns
+CSV,"SW (PSA), ROM + fewer tables",8902,8882,107,107,395.003
+    (variant, cold setup cyc, setup cyc, enc cyc/B, dec cyc/B, enc 176 B us)
+
+arm-zephyr-eabi-size build_sw_rom_fewer/zephyr/zephyr.elf
+   text	   data	    bss	    dec	    hex	filename
+  32808	    220	  10280	  43308	   a92c	build_sw_rom_fewer/zephyr/zephyr.elf
+
+arm-zephyr-eabi-nm -S build_sw_rom_fewer/zephyr/zephyr.elf (FT0, FT1, RT0, FSb):
+08007f25 00000100 r FSb
+08007210 00000400 r FT0
+08006e10 00000400 r RT0
