@@ -6,7 +6,7 @@ ESE5180: IoT Wireless, Security, & Scaling
 
 | Team Member Name | Email Address       |
 |------------------|---------------------|
-| [Name 1]         | [Email 1]           |
+| Talal Ammache| tammache@seas.upenn.edu|
 | [Name 2]         | [Email 2]           |
 
 **GitHub Repository URL:** https://github.com/Rico-Zhuang/ESE5180_Lab2_Fall2026_Rico_Talal
