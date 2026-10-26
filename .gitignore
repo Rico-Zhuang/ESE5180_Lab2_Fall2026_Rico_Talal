@@ -1,0 +1,10 @@
+# Local checkout of the course starter repository; submit lab2_security/ instead.
+/ese5180deps/
+
+# Generated Zephyr builds and local test evidence.
+build*/
+__pycache__/
+*.pyc
+
+# Device signing identities contain private keys.
+**/src/identity.h

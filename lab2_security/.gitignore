@@ -1,0 +1,5 @@
+# Generated identities contain private signing seeds. Recreate for each pair.
+LoRa_Encrypted_Client_Zephyr/src/identity.h
+LoRa_Encrypted_Server_Zephyr/src/identity.h
+build*/
+__pycache__/
