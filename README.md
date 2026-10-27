@@ -23,6 +23,8 @@ We chose Curve25519 Diffie–Hellman because the starter supports it and it crea
 
 AES provides confidentiality, while signatures and replay checks protect integrity. Retries and timeout recovery support availability during packet loss. Jamming, traffic analysis, and physical key extraction remain risks, and LoRa's range lets attackers operate farther away. Occasional lost readings may be acceptable for a noncritical sensor, but availability against jamming is not guaranteed.
 
+![Client and server serial output showing encrypted delivery, receipts, and duplicate rejection](part1.png)
+
 ## Part 2 — Encryption Speed and Memory Tradeoffs
 
 All four [benchmark variants](lab2_security/AES_Benchmark_Zephyr/) ran on the same NUCLEO-WL55JC at 48 MHz, using 200 iterations and a 176-byte message. Each passed the known-answer and round-trip checks. [Saved measurements](lab2_security/AES_Benchmark_Zephyr/results/) were collected on October 26, 2026.
@@ -70,13 +72,13 @@ The [implementation and reproduction steps](lab2_security/Hardware_Unique_Keys/)
 
 The 16-byte sample key is visible at `0x0803F000` in Board A's NVS dump.
 
-![Plaintext key in NVS, 8-bit hex view](lab2_security/Hardware_Unique_Keys/results/plaintext.png)
+![Plaintext key in NVS, terminal hex dump](part3_plain.png)
 
 ### Answer 3.2 — Encrypted storage
 
 HKDF-SHA256 derives an AES-128 key from the board UID and application salt. NVS stores the IV, CBC ciphertext, and a digest for checking decryption. Serial provisioning keeps the plaintext key out of the firmware; it was absent from the entire 256 KiB flash dump.
 
-![Encrypted key in NVS, 8-bit hex view](lab2_security/Hardware_Unique_Keys/results/encrypted.png)
+![Encrypted key in NVS, terminal hex dump](part3_encrypted.png)
 
 ### Answer 3.3 — Cloning
 

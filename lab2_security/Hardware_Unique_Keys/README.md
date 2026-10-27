@@ -8,8 +8,8 @@ The starter's configuration and `psa_cipher_encrypt` API use CBC, despite its TO
 
 ## Recorded results
 
-- [Plaintext memory screenshot](results/plaintext.png): sample key at `0x0803F000`.
-- [Encrypted memory screenshot](results/encrypted.png): IV, ciphertext, and digest; no plaintext key anywhere in the 256 KiB flash dump.
+- [Plaintext memory screenshot](../../part3_plain.png): sample key at `0x0803F000`.
+- [Encrypted memory screenshot](../../part3_encrypted.png): IV, ciphertext, and digest; no plaintext key anywhere in the 256 KiB flash dump.
 - [Board output and clone comparison](results/clone-check.txt): A passed after reboot; B rejected the identical full flash image and also rejected it after reboot.
 
 Both boards are left running Part 3 for checkoff:
